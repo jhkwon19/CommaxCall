@@ -16,3 +16,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local AI instructions and protocol analysis notes
+AGENTS.md
+packet_sniffing.txt
