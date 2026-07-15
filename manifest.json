@@ -2,15 +2,15 @@
   "domain": "commax_call",
   "name": "Commax Call",
   "config_flow": true,
-  "documentation": "",
+  "documentation": "https://github.com/jhkwon19/CommaxCall",
   "requirements": [],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
   "dependencies": [],
   "codeowners": [
-    "@oukene"
+    "@jhkwon19"
   ],
-  "iot_class": "",
+  "iot_class": "local_push",
   "version": "1.0.0"
 }

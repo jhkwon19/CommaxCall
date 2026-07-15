@@ -1,4 +1,9 @@
-"""Config flow for Hello World integration."""
+"""EW11 접속 정보와 Commax 엔티티 패킷을 입력하는 UI 설정 흐름입니다.
+
+최초 설정에서는 TCP 접속 정보만 저장합니다. 이후 옵션 설정에서 각 패킷을
+포함한 벨 센서와 스위치 목록을 관리합니다. 옵션을 저장하면 ``__init__.py``의
+리스너를 통해 Config Entry를 다시 로딩합니다.
+"""
 import logging
 import voluptuous as vol
 from typing import Any, Dict, Optional
@@ -22,37 +27,21 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Hello World."""
+    """통합 구성요소를 처음 추가할 때 EW11 호스트와 포트를 입력받습니다."""
 
     VERSION = 1
-    # Pick one of the available connection classes in homeassistant/config_entries.py
-    # This tells HA if it should be asking for updates, or it'll be notified of updates
-    # automatically. This example uses PUSH, as the dummy hub will notify HA of
-    # changes.
+    # 엔티티 상태는 HA의 주기적인 폴링이 아니라 소켓 수신 데이터로 변경됩니다.
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
     data: Optional[Dict[str, Any]]
 
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
-        """Handle the initial step."""
-        # This goes through the steps to take the user through the setup process.
-        # Using this it is possible to update the UI and prompt for additional
-        # information. This example provides a single form (built from `DATA_SCHEMA`),
-        # and when that has some validated input, it calls `async_create_entry` to
-        # actually create the HA config entry. Note the "title" value is returned by
-        # `validate_input` above.
+        """접속 정보 입력 화면을 표시하고 최초 Config Entry를 생성합니다."""
         errors = {}
         if user_input is not None:
-            # if user_input[CONF_NETWORK_SEARCH] == True:
-            #    return self.async_create_entry(title=user_input[CONF_AREA_NAME], data=user_input)
-            # else:
             self.data = user_input
-            #self.data[CONF_SWITCHES] = []
-            #self.data[CONF_SENSORS] = []
-            # self.devices = await get_available_device()
-            # return await self.async_step_hosts()
             return self.async_create_entry(title=NAME, data=self.data)
 
-        # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
+        # 아직 입력이 없거나 오류가 있으면 오류 정보와 함께 입력 화면을 다시 표시합니다.
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(
                 {
@@ -64,19 +53,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        """Handle a option flow."""
+        """통합 구성요소의 '구성' 버튼에서 사용할 옵션 흐름을 반환합니다."""
         return OptionsFlowHandler()
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handles options flow for the component."""
+    """패킷 기반 센서와 스위치를 추가·유지·삭제합니다."""
 
     def __init__(self) -> None:
-        """Initialize the options flow."""
+        """옵션 설정 흐름을 초기화합니다."""
         self.data = None
 
     def _initialize_data(self) -> None:
-        """Copy the current entry values after Home Assistant injects the entry."""
+        """현재 설정값을 옵션 흐름에서 수정할 작업 데이터로 한 번만 복사합니다."""
         if self.data is not None:
             return
 
@@ -95,7 +84,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """Manage the options for the custom component."""
+        """커스텀 통합 구성요소의 옵션을 관리합니다."""
         self._initialize_data()
         errors: Dict[str, str] = {}
 
@@ -111,7 +100,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         devices = homeassistant.helpers.device_registry.async_entries_for_config_entry(
             device_registry, self.config_entry.entry_id)
 
-        # Default value for our multi-select.
+        # 저장된 패킷 정의와 Home Assistant 레지스트리에 존재하는 엔티티를
+        # 연결하여 다중 선택 항목을 다시 구성합니다.
         for host in self.data[CONF_SENSORS]:
             for e in entities:
                 if e.original_device_class == BinarySensorDeviceClass.SOUND and e.original_name == host[CONF_NAME]:
@@ -159,11 +149,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 remove_entities = []
 
                 _LOGGER.debug(f"all entities by 4 sensor : {all_entities_by_id_4_sensor}")
+                # 선택된 엔티티는 옵션에 다시 저장하고, 선택 해제된 엔티티는
+                # 아래에서 엔티티 레지스트리로부터 제거합니다.
                 for key in all_entities_by_id_4_sensor:
                     if all_entities_by_id_4_sensor[key] not in user_input[CONF_SENSORS]:
                         _LOGGER.debug("remove entity : %s", all_entities_by_id_4_sensor[key])
                         remove_entities.append(all_entities_by_id_4_sensor[key])
-                        #self.config_entry.data[CONF_DEVICES].remove( { host[CONF_HOST], [e.name for e in devices if e.id == all_devices_by_host[host[CONF_HOST]]] })
                     else:
                         _LOGGER.debug("append entity : %s", all_entities_by_id_4_sensor[key])
                         self.data[CONF_SENSORS].append(
@@ -183,7 +174,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                       all_entities_by_id_4_switch[key])
                         remove_entities.append(
                             all_entities_by_id_4_switch[key])
-                        #self.config_entry.data[CONF_DEVICES].remove( { host[CONF_HOST], [e.name for e in devices if e.id == all_devices_by_host[host[CONF_HOST]]] })
                     else:
                         _LOGGER.debug("append entity : %s", all_entities_by_id_4_switch[key])
                         self.data[CONF_SWITCHES].append(
@@ -200,9 +190,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     entity_registry.async_remove(id)
 
                 if user_input.get(CONF_ADD_ENTITY_TYPE) == "sensor":
-                    # if len(self.devices) <= 0:
-                    #    return self.async_create_entry(title=self.cnfig_entry.data[CONF_AREA_NAME], data=self.config_entry.data)
-                    # else:
                     _LOGGER.debug("add sensor entity")
                     return await self.async_step_sensor()
                 elif user_input.get(CONF_ADD_ENTITY_TYPE) == "switch":
@@ -214,7 +201,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     for d in devices:
                         device_registry.async_remove_device(d.id)
 
-                # User is done adding repos, create the config entry.
+                # 추가 단계가 선택되지 않았으므로 수정된 옵션을 바로 저장합니다.
                 self.data["modifydatetime"] = str(datetime.now())
                 return self.async_create_entry(title=NAME, data=self.data)
 
@@ -225,8 +212,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(CONF_SENSORS, default=list(all_entities_4_sensor)): cv.multi_select(all_entities_4_sensor),
                 vol.Optional(CONF_SWITCHES, default=list(all_entities_4_switch)): cv.multi_select(all_entities_4_switch),
                 vol.Optional(CONF_ADD_ENTITY_TYPE): vol.In(ENTITY_TYPES)
-                #vol.Optional(CONF_USE_SETUP_MODE, False, cv.boolean),
-                #vol.Optional(CONF_ADD_GROUP_DEVICE, False, cv.boolean),
             }
         )
 
@@ -235,12 +220,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_sensor(self, user_input: Optional[Dict[str, Any]] = None):
-        """Second step in config flow to add a repo to watch."""
+        """벨 센서 하나의 패킷 서명과 자동 종료 시간을 입력받습니다."""
         errors: Dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug("async sensor entity user input is not none")
             if not errors:
-                # Input is valid, set data.
+                # 입력값을 센서 설정 목록에 추가합니다.
                 self.data[CONF_SENSORS].append(
                     {
                         CONF_NAME: user_input.get(CONF_NAME, CONF_NAME),
@@ -269,12 +254,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_switch(self, user_input: Optional[Dict[str, Any]] = None):
-        """Second step in config flow to add a repo to watch."""
+        """스위치 하나의 송신 패킷과 자동 꺼짐 시간을 입력받습니다."""
         errors: Dict[str, str] = {}
         if user_input is not None:
 
             if not errors:
-                # Input is valid, set data.
+                # 입력값을 스위치 설정 목록에 추가합니다.
                 self.data[CONF_SWITCHES].append(
                     {
                         CONF_NAME: user_input.get(CONF_NAME, CONF_NAME),
@@ -301,8 +286,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
 
 class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
+    """장치에 연결할 수 없음을 나타내는 오류입니다."""
 
 
 class InvalidHost(exceptions.HomeAssistantError):
-    """Error to indicate there is an invalid hostname."""
+    """호스트 이름이 올바르지 않음을 나타내는 오류입니다."""

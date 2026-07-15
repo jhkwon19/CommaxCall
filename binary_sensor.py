@@ -1,10 +1,8 @@
-"""Platform for sensor integration."""
-# This file shows the setup for the sensors associated with the cover.
-# They are setup in the same way with the call to the async_setup_entry function
-# via HA from the module __init__. Each sensor has a device_class, this tells HA how
-# to display it in the UI (for know types). The unit_of_measurement property tells HA
-# what the unit is, so it can display the correct range. For predefined types (such as
-# battery), the unit_of_measurement should match what's expected.
+"""패킷으로 상태가 바뀌는 벨 바이너리 센서 플랫폼입니다.
+
+각 BellSensor는 수신한 16바이트 패킷을 설정된 시작 및 종료 패킷과 비교합니다.
+상태는 Home Assistant로 즉시 전달되며 이 플랫폼은 주기적으로 폴링하지 않습니다.
+"""
 import logging
 from xmlrpc.client import boolean
 from typing import Optional
@@ -35,16 +33,11 @@ import math
 
 _LOGGER = logging.getLogger(__name__)
 
-# See cover.py for more details.
-# Note how both entities for each roller sensor (battry and illuminance) are added at
-# the same time to the same list. This way only a single async_add_devices call is
-# required.
-
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
-    """Add sensors for passed config_entry in HA."""
+    """이 Config Entry의 옵션에 저장된 모든 벨 센서를 생성합니다."""
 
     hass.data[DOMAIN]["listener"] = []
 
@@ -73,18 +66,19 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
 
 
 class Device:
-    """Dummy roller (device for HA) for Hello World example."""
+    """같은 Config Entry의 벨 센서들이 공유하는 장치 정보입니다.
+
+    현재 ``device.Device``와 같은 역할을 하며 기존 센서 플랫폼 구조와의
+    호환성을 위해 이 파일에 유지하고 있습니다.
+    """
 
     def __init__(self, name, config):
-        """Init dummy roller."""
+        """Home Assistant에 표시할 식별자와 장치 정보를 초기화합니다."""
         self._id = f"{name}_{config.entry_id}"
         self._name = name
         self._callbacks = set()
         self._loop = asyncio.get_event_loop()
-        # Reports if the roller is moving up or down.
-        # >0 is up, <0 is down. This very much just for demonstration.
-
-        # Some static information about this device
+        # 여러 엔티티를 하나의 HA 장치 페이지에 묶기 위한 고정 정보입니다.
         self.firmware_version = VERSION
         self.model = NAME
         self.manufacturer = NAME
@@ -94,53 +88,42 @@ class Device:
         return self._name
     @property
     def device_id(self):
-        """Return ID for roller."""
+        """엔티티의 device_info에서 사용할 식별자를 반환합니다."""
         return self._id
 
     def register_callback(self, callback):
-        """Register callback, called when Roller changes state."""
+        """Home Assistant 상태 갱신 콜백을 등록합니다."""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback):
-        """Remove previously registered callback."""
+        """앞서 등록한 콜백을 제거합니다."""
         self._callbacks.discard(callback)
 
-    # In a real implementation, this library would call it's call backs when it was
-    # notified of any state changeds for the relevant device.
     async def publish_updates(self):
-        """Schedule call all registered callbacks."""
+        """등록된 모든 콜백을 호출합니다."""
         for callback in self._callbacks:
             callback()
 
     def publish_updates(self):
-        """Schedule call all registered callbacks."""
+        """등록된 모든 콜백을 호출합니다."""
         for callback in self._callbacks:
             callback()
 
-# This base class shows the common properties and methods for a sensor as used in this
-# example. See each sensor for further details about properties and methods that
-# have been overridden.
-
-
 class SensorBase(BinarySensorEntity):
-    """Base representation of a Hello World Sensor."""
+    """Commax 벨 센서에 공통 장치 정보를 제공합니다."""
 
     should_poll = False
 
     def __init__(self, device):
-        """Initialize the sensor."""
+        """센서의 공통 장치 정보를 초기화합니다."""
         self._device = device
 
-    # To link this entity to the cover device, this property must return an
-    # identifiers value matching that used in the cover, but no other information such
-    # as name. If name is returned, this entity will then also become a device in the
-    # HA UI.
     @property
     def device_info(self):
-        """Information about this entity/device."""
+        """이 엔티티를 Config Entry의 Commax 장치 아래에 묶습니다."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            # If desired, the name for the device could be different to the entity
+            # 장치 이름과 엔티티 이름은 필요에 따라 서로 다르게 지정할 수 있습니다.
             "name": self._device.name,
             "sw_version": self._device.firmware_version,
             "model": self._device.model,
@@ -148,41 +131,35 @@ class SensorBase(BinarySensorEntity):
         }
 
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
     @property
     def available(self) -> bool:
-        """Return True if roller and hub is available."""
+        """엔티티 사용 가능 여부를 반환합니다. 현재는 항상 참입니다."""
         return True
 
     async def async_added_to_hass(self):
-        """Run when this Entity has been added to HA."""
-        # Sensors should also register callbacks to HA when their state changes
+        """엔티티가 HA에 추가될 때 호출됩니다."""
+        # 센서 상태가 바뀌면 HA에 알릴 수 있도록 콜백을 등록합니다.
         self._device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self):
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        """엔티티가 HA에서 제거되기 전에 호출됩니다."""
+        # async_added_to_hass에서 등록한 콜백을 해제합니다.
         self._device.remove_callback(self.async_write_ha_state)
 
 
 class BellSensor(SensorBase):
-    """Representation of a Thermal Comfort Sensor."""
+    """설정된 호출 패킷에는 켜지고 종료 패킷에는 꺼지는 벨 센서입니다."""
 
     def __init__(self, hass, hub, device, entity_name, bell_start_packet, bell_end_packet, call_end_packet, bell_off_timer):
-        """Initialize the sensor."""
+        """센서의 패킷 조건, 자동 종료 시간 및 초기 상태를 설정합니다."""
         _LOGGER.debug("call init")
         super().__init__(device)
 
         self.hass = hass
-        #self._switch_entity = switch_entity
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, "{}_{}".format("commax_call", entity_name), hass=hass)
         
         hub.add_sensor(self)
-        #hub._entities[CONF_SENSORS][self.entity_id] = self
-        #_LOGGER.debug(
-        #    f"add sensor entity size {len(hub._entities[CONF_SENSORS])}")
 
         self._bell_start_packet = bell_start_packet
         self._bell_end_packet = bell_end_packet
@@ -210,6 +187,7 @@ class BellSensor(SensorBase):
         self.schedule_update_ha_state(True)
 
     def on_recv_data(self, data):
+        """Hub가 조립한 완전한 패킷 하나를 센서 상태에 반영합니다."""
         if bytearray.fromhex(self._bell_start_packet) == data:
             _LOGGER.debug("call start")
             self.set_state(True)
@@ -229,36 +207,37 @@ class BellSensor(SensorBase):
         self.schedule_update_ha_state(True)
 
     def update(self):
-        """Update the state."""
+        """폴링용 상태 갱신 메서드입니다. 현재는 사용하지 않습니다."""
 
     def bell_force_off(self):
+        """종료 패킷을 놓쳐도 벨이 계속 켜져 있지 않도록 강제로 끕니다."""
         _LOGGER.debug("bell force off")
         self.set_state(False)
 
 
-    """Sensor Properties"""
+    """Home Assistant에 노출하는 센서 속성입니다."""
     @property
     def is_on(self):
         return self._value
 
     @property
     def extra_state_attributes(self):
-        """Return entity specific state attributes."""
+        """이 엔티티에 설정된 패킷과 타이머 속성을 반환합니다."""
         return self._attributes
 
     @property
     def name(self):
-        """Return the name of the sensor."""
+        """센서 이름을 반환합니다."""
         return self._name
 
     @property
     def device_class(self) -> Optional[str]:
-        """Return the device class of the sensor."""
+        """센서의 장치 클래스를 반환합니다."""
         return self._device_class
         
     @property
     def unique_id(self) -> str:
-        """Return a unique ID."""
+        """엔티티의 고유 ID를 반환합니다."""
         if self._unique_id is not None:
             return self._unique_id
 
