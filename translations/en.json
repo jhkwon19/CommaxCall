@@ -1,0 +1,51 @@
+{
+    "title": "Commax Call",
+    "config": {
+        "step": {
+            "confirm": {
+                "description": "Do you want to install it?"
+            },
+            "user": {
+                "data": {
+                    "host": "Host : Socket IP(192.168.x.x)",
+                    "port": "Port : (default:8899)"
+                },
+                "description": "Click OK to add the integration component"
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Commax Call Optional",
+                "data": {
+                    "add_entity_type": "template to add",
+                    "bell_add_desc": "add bell sensor",
+                    "switch_add_desc": "add a switch",
+                    "sensors": "Bell sensor list (delete when unchecked)",
+                    "switches": "Switch list (delete when unchecked)"
+                },
+                "description": ""
+            },
+            "sensor": {
+                "title": "Add a bell sensor",
+                "data": {
+                    "name": "sensor name",
+                    "bell_start_packet": "call packet (hex)",
+                    "bell_end_packet": "End packet (hex)",
+                    "call_end_packet": "End call packet (hex)",
+                    "bell_off_timer": "Bell Auto End Time (seconds)"
+                }
+            },
+            "switch": {
+                "title": "Add a switch.",
+                "data": {
+                    "name": "switch name",
+                    "switch_on_packet": "Packets to be sent when the switch is turned on(hex)",
+                    "switch_off_packet": "Packets to be sent when the switch is off(hex)",
+                    "switch_off_timer": "Switch auto-off time (seconds)"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "domain": "commax_call",
+  "name": "Commax Call",
+  "config_flow": true,
+  "documentation": "",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@oukene"
+  ],
+  "iot_class": "",
+  "version": "1.0.0"
+}
