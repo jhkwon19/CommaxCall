@@ -21,7 +21,7 @@ from homeassistant.components.switch import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ENTITY_ID_FORMAT = DOMAIN + ".{}"
+ENTITY_ID_FORMAT = "switch.{}"
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """이 Config Entry의 옵션에 저장된 모든 명령 스위치를 생성합니다."""
@@ -120,8 +120,11 @@ class CommaxSwitch(SwitchBase):
 
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._device_class = SwitchDeviceClass.SWITCH
-        self._unique_id = self.entity_id
+        # 기존 릴리스가 잘못된 commax_call 도메인으로 unique_id를 만들었으므로
+        # 레지스트리, 자동화 및 대시보드 연결을 유지하기 위해 그 값은 보존합니다.
+        self._unique_id = f"{DOMAIN}.{self.entity_id.split('.', 1)[1]}"
         self._device = device
+        self._off_timer_handle = None
 
     def set_value(self, value: float) -> None:
         self._push_count = int(min(self._push_max, int(value)))
@@ -144,7 +147,14 @@ class CommaxSwitch(SwitchBase):
         self.schedule_update_ha_state(True)
 
         if self._off_timer != 0 and self._off_timer != None:
-            threading.Timer(self._off_timer, self.turn_off).start()
+            if self._off_timer_handle is not None:
+                self._off_timer_handle.cancel()
+            self._off_timer_handle = threading.Timer(
+                self._off_timer,
+                lambda: self.hass.add_job(self.turn_off),
+            )
+            self._off_timer_handle.daemon = True
+            self._off_timer_handle.start()
 
     def turn_off(self, **kargs):
         """OFF 패킷을 보내고 꺼짐 상태를 Home Assistant에 반영합니다."""
@@ -153,6 +163,13 @@ class CommaxSwitch(SwitchBase):
             self._hub.send_packet(self._off_packet)
         self._state = "off"
         self.schedule_update_ha_state(True)
+
+    async def async_will_remove_from_hass(self):
+        """자동 OFF 타이머를 취소하고 상태 콜백을 해제합니다."""
+        if self._off_timer_handle is not None:
+            self._off_timer_handle.cancel()
+            self._off_timer_handle = None
+        await super().async_will_remove_from_hass()
 
     async def async_toggle(self, **kwargs):
         """스위치 상태를 전환합니다. 현재 별도 동작은 구현하지 않았습니다."""

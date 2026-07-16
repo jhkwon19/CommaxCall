@@ -139,7 +139,9 @@ class Hub:
                             entity._bell_start_packet,
                             entity._bell_end_packet,
                         )
-                        entity.on_recv_data(packet)
+                        # recv 루프는 별도 스레드에서 실행되므로 엔티티 상태 변경은
+                        # Home Assistant 이벤트 루프로 전달합니다.
+                        self.hass.add_job(entity.on_recv_data, packet)
             except OSError as err:
                 self._recv_buffer.clear()
                 if self._unload:

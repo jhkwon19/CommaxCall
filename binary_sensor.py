@@ -33,7 +33,7 @@ import math
 
 _LOGGER = logging.getLogger(__name__)
 
-ENTITY_ID_FORMAT = DOMAIN + ".{}"
+ENTITY_ID_FORMAT = "binary_sensor.{}"
 
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
@@ -98,11 +98,6 @@ class Device:
     def remove_callback(self, callback):
         """앞서 등록한 콜백을 제거합니다."""
         self._callbacks.discard(callback)
-
-    async def publish_updates(self):
-        """등록된 모든 콜백을 호출합니다."""
-        for callback in self._callbacks:
-            callback()
 
     def publish_updates(self):
         """등록된 모든 콜백을 호출합니다."""
@@ -177,14 +172,10 @@ class BellSensor(SensorBase):
 
         self._attr_device_class = BinarySensorDeviceClass.SOUND
         self._device_class = BinarySensorDeviceClass.SOUND
-        self._unique_id = self.entity_id
+        # 기존 릴리스가 잘못된 commax_call 도메인으로 unique_id를 만들었으므로
+        # 레지스트리, 자동화 및 대시보드 연결을 유지하기 위해 그 값은 보존합니다.
+        self._unique_id = f"{DOMAIN}.{self.entity_id.split('.', 1)[1]}"
         self._device = device
-
-
-    def set_state(self, state):
-        _LOGGER.debug(f"call set state : {state}")
-        self._value = state
-        self.schedule_update_ha_state(True)
 
     def on_recv_data(self, data):
         """Hub가 조립한 완전한 패킷 하나를 센서 상태에 반영합니다."""
@@ -195,10 +186,16 @@ class BellSensor(SensorBase):
                 self._timer.cancel()
             _LOGGER.debug(f"force off timer : {self._bell_off_timer}")
             self._timer = threading.Timer(
-                self._bell_off_timer, self.bell_force_off)
+                self._bell_off_timer,
+                lambda: self.hass.add_job(self.bell_force_off),
+            )
+            self._timer.daemon = True
             self._timer.start()
         elif bytearray.fromhex(self._bell_end_packet) == data or bytearray.fromhex(self._call_end_packet) == data:
             _LOGGER.debug("call end")
+            if self._timer is not None:
+                self._timer.cancel()
+                self._timer = None
             self.set_state(False)
 
     def set_state(self, state):
@@ -212,7 +209,15 @@ class BellSensor(SensorBase):
     def bell_force_off(self):
         """종료 패킷을 놓쳐도 벨이 계속 켜져 있지 않도록 강제로 끕니다."""
         _LOGGER.debug("bell force off")
+        self._timer = None
         self.set_state(False)
+
+    async def async_will_remove_from_hass(self):
+        """강제 OFF 타이머를 취소하고 상태 콜백을 해제합니다."""
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
+        await super().async_will_remove_from_hass()
 
 
     """Home Assistant에 노출하는 센서 속성입니다."""
