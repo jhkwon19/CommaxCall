@@ -123,6 +123,11 @@ TCP는 메시지 경계를 보존하지 않기 때문에 한 번의 `recv()`가 
 
 후속 업데이트는 GitHub 릴리스로 배포하며 HACS / Marketplace에서 받을 수 있습니다. 업데이트 적용 시 다시 로드 또는 재시작이 필요한지는 설치 화면의 안내를 따르세요.
 
+## 1.0.2 변경사항
+
+- 더 이상 사용되지 않는 Config Flow의 `CONNECTION_CLASS` 선언을 제거해 `CONN_CLASS_LOCAL_POLL` 사용 중단 경고를 해결했습니다. 연결 방식은 기존 manifest의 `iot_class: local_push`로 선언합니다.
+- 실제 HA 내 재로드 및 EW11 통신은 별도 확인이 필요합니다.
+
 ## 1.0.1 변경사항
 
 - Home Assistant 2026.11에서 제거된 상태 변경 추적 함수의 미사용 import를 제거했습니다.

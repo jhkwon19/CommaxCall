@@ -30,8 +30,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """통합 구성요소를 처음 추가할 때 EW11 호스트와 포트를 입력받습니다."""
 
     VERSION = 1
-    # 엔티티 상태는 HA의 주기적인 폴링이 아니라 소켓 수신 데이터로 변경됩니다.
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
     data: Optional[Dict[str, Any]]
 
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):

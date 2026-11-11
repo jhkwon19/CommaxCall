@@ -3,7 +3,7 @@
 # DOMAIN은 manifest.json 및 custom_components 하위 디렉터리 이름과 일치해야 합니다.
 DOMAIN = "commax_call"
 NAME = "Commax Call"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 # 옵션 화면에서 추가할 엔티티 종류를 선택할 때 표시하는 값입니다.
 ENTITY_TYPES = {
