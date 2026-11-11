@@ -11,7 +11,6 @@ from homeassistant.const import (
 from .device import Device
 from .const import *
 from homeassistant.helpers.entity import Entity, async_generate_entity_id, generate_entity_id
-from homeassistant.helpers.event import async_track_state_change, track_state_change
 from homeassistant.components.switch import (
     SwitchDeviceClass,
     SwitchEntity,

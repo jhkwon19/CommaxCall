@@ -21,7 +21,6 @@ from .const import *
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity, async_generate_entity_id, generate_entity_id
-from homeassistant.helpers.event import async_track_state_change, track_state_change
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
