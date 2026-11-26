@@ -20,7 +20,6 @@ from homeassistant.helpers.entity import Entity
 from .const import *
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity, async_generate_entity_id, generate_entity_id
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -31,8 +30,6 @@ from homeassistant.components.binary_sensor import (
 import math
 
 _LOGGER = logging.getLogger(__name__)
-
-ENTITY_ID_FORMAT = "binary_sensor.{}"
 
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
@@ -150,11 +147,8 @@ class BellSensor(SensorBase):
         super().__init__(device)
 
         self.hass = hass
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, "{}_{}".format("commax_call", entity_name), hass=hass)
+        self.entity_id, self._unique_id = hub.identities[("binary_sensor", entity_name)]
         
-        hub.add_sensor(self)
-
         self._bell_start_packet = bell_start_packet
         self._bell_end_packet = bell_end_packet
         self._call_end_packet = call_end_packet
@@ -171,10 +165,8 @@ class BellSensor(SensorBase):
 
         self._attr_device_class = BinarySensorDeviceClass.SOUND
         self._device_class = BinarySensorDeviceClass.SOUND
-        # 기존 릴리스가 잘못된 commax_call 도메인으로 unique_id를 만들었으므로
-        # 레지스트리, 자동화 및 대시보드 연결을 유지하기 위해 그 값은 보존합니다.
-        self._unique_id = f"{DOMAIN}.{self.entity_id.split('.', 1)[1]}"
         self._device = device
+        hub.add_sensor(self)
 
     def on_recv_data(self, data):
         """Hub가 조립한 완전한 패킷 하나를 센서 상태에 반영합니다."""

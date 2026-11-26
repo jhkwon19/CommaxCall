@@ -7,6 +7,7 @@ import logging
 from .const import CONF_HOST, CONF_SWITCHES, CONF_SENSORS
 
 from . import hub
+from .entity_ids import prepare_entity_ids
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -44,7 +45,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug(f"async_setup_entry - host : {host}, port : {port}")
 
     # 각 플랫폼 모듈은 entry_id로 이 Hub 인스턴스를 찾아 공유합니다.
-    hass.data[DOMAIN][entry.entry_id] = hub.Hub(hass, host, port)
+    identities = prepare_entity_ids(hass, entry)
+    hass.data[DOMAIN][entry.entry_id] = hub.Hub(hass, host, port, identities)
     _LOGGER.debug(
         f"create sensor entity size : {entry.data.get(CONF_SENSORS)}")
     _LOGGER.debug(f"create switch entity size : {entry.data.get(CONF_SWITCHES)}")

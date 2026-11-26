@@ -10,7 +10,6 @@ from homeassistant.const import (
 
 from .device import Device
 from .const import *
-from homeassistant.helpers.entity import Entity, async_generate_entity_id, generate_entity_id
 from homeassistant.components.switch import (
     SwitchDeviceClass,
     SwitchEntity,
@@ -19,8 +18,6 @@ from homeassistant.components.switch import (
 
 
 _LOGGER = logging.getLogger(__name__)
-
-ENTITY_ID_FORMAT = "switch.{}"
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """이 Config Entry의 옵션에 저장된 모든 명령 스위치를 생성합니다."""
@@ -103,8 +100,7 @@ class CommaxSwitch(SwitchBase):
         self._off_packet = off_packet
         self._off_timer = off_timer
 
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, "{}_{}".format("commax_call", entity_name), hass=hass)
+        self.entity_id, self._unique_id = hub.identities[("switch", entity_name)]
 
         hub._entities[CONF_SWITCHES][self.entity_id] = self
 
@@ -119,9 +115,6 @@ class CommaxSwitch(SwitchBase):
 
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._device_class = SwitchDeviceClass.SWITCH
-        # 기존 릴리스가 잘못된 commax_call 도메인으로 unique_id를 만들었으므로
-        # 레지스트리, 자동화 및 대시보드 연결을 유지하기 위해 그 값은 보존합니다.
-        self._unique_id = f"{DOMAIN}.{self.entity_id.split('.', 1)[1]}"
         self._device = device
         self._off_timer_handle = None
 

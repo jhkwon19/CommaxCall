@@ -26,10 +26,11 @@ class Hub:
     """EW11 연결 하나를 유지하고 패킷을 통합 구성요소 엔티티로 전달합니다."""
     manufacturer = DOMAIN
     
-    def __init__(self, hass, host, port):
+    def __init__(self, hass, host, port, identities):
         """엔티티 저장소를 초기화하고 백그라운드 수신 루프를 시작합니다."""
         _LOGGER.debug("init hub")
         self.hass = hass
+        self.identities = identities
         self._host = host
         self._port = port
         self._timer = None
