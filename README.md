@@ -123,6 +123,12 @@ TCP는 메시지 경계를 보존하지 않기 때문에 한 번의 `recv()`가 
 
 후속 업데이트는 GitHub 릴리스로 배포하며 HACS / Marketplace에서 받을 수 있습니다. 업데이트 적용 시 다시 로드 또는 재시작이 필요한지는 설치 화면의 안내를 따르세요.
 
+## 1.0.3 변경사항
+
+- 재로드 후에도 기존 호출 센서와 스위치의 엔터티 ID를 유지합니다.
+- 같은 통합 항목에서 생긴 _2, _3 등의 중복 엔터티를 자동으로 정리합니다.
+- Marketplace에서 업데이트한 후 Home Assistant를 재시작해 새 코드를 불러옵니다.
+
 ## 1.0.2 변경사항
 
 - 더 이상 사용되지 않는 Config Flow의 `CONNECTION_CLASS` 선언을 제거해 `CONN_CLASS_LOCAL_POLL` 사용 중단 경고를 해결했습니다. 연결 방식은 기존 manifest의 `iot_class: local_push`로 선언합니다.
